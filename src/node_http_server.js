@@ -30,12 +30,12 @@ class NodeHttpServer {
     this.mediaroot = config.http.mediaroot || HTTP_MEDIAROOT;
     this.config = config;
 
-    let app = Express();
-    app.use(bodyParser.json());
+    this.app = Express();
+    this.app.use(bodyParser.json());
 
-    app.use(bodyParser.urlencoded({ extended: true }));
+    this.app.use(bodyParser.urlencoded({ extended: true }));
 
-    app.all('*', (req, res, next) => {
+    this.app.all('*', (req, res, next) => {
       res.header('Access-Control-Allow-Origin', this.config.http.allow_origin);
       res.header('Access-Control-Allow-Headers', 'Content-Type,Content-Length, Authorization, Accept,X-Requested-With');
       res.header('Access-Control-Allow-Methods', 'PUT,POST,GET,DELETE,OPTIONS');
@@ -43,34 +43,34 @@ class NodeHttpServer {
       req.method === 'OPTIONS' ? res.sendStatus(200) : next();
     });
 
-    app.get('*.flv', (req, res, next) => {
+    this.app.get('*.flv', (req, res, next) => {
       req.nmsConnectionType = 'http';
       this.onConnect(req, res);
     });
 
     let adminEntry = path.join(__dirname + '/public/admin/index.html');
     if (Fs.existsSync(adminEntry)) {
-      app.get('/admin/*', (req, res) => {
+      this.app.get('/admin/*', (req, res) => {
         res.sendFile(adminEntry);
       });
     }
 
     if (this.config.http.api !== false) {
       if (this.config.auth && this.config.auth.api) {
-        app.use(['/api/*', '/static/*', '/admin/*'], basicAuth(this.config.auth.api_user, this.config.auth.api_pass));
+        this.app.use(['/api/*', '/static/*', '/admin/*'], basicAuth(this.config.auth.api_user, this.config.auth.api_pass));
       }
-      app.use('/api/streams', streamsRoute(context));
-      app.use('/api/server', serverRoute(context));
-      app.use('/api/relay', relayRoute(context));
+      this.app.use('/api/streams', streamsRoute(context));
+      this.app.use('/api/server', serverRoute(context));
+      this.app.use('/api/relay', relayRoute(context));
     }
 
-    app.use(Express.static(path.join(__dirname + '/public')));
-    app.use(Express.static(this.mediaroot));
+    this.app.use(Express.static(path.join(__dirname + '/public')));
+    this.app.use(Express.static(this.mediaroot));
     if (config.http.webroot) {
-      app.use(Express.static(config.http.webroot));
+      this.app.use(Express.static(config.http.webroot));
     }
 
-    this.httpServer = Http.createServer(app);
+    this.httpServer = Http.createServer(this.app);
 
     /**
      * ~ openssl genrsa -out privatekey.pem 1024
@@ -83,7 +83,7 @@ class NodeHttpServer {
         cert: Fs.readFileSync(this.config.https.cert)
       };
       this.sport = config.https.port ? config.https.port : HTTPS_PORT;
-      this.httpsServer = Https.createServer(options, app);
+      this.httpsServer = Https.createServer(options, this.app);
     }
   }
 
